@@ -58,6 +58,10 @@ handleNewUser = method GET handleForm <|> method POST handleFormSubmit
     handleForm = render "new_user"
     handleFormSubmit = registerUser "login" "password" >> redirect "/"
 
+------------------------------------------------------------------------------
+
+handleNewRun :: Handler App (AuthManager App) ()
+handleNewRun  = method GET $ render "new_run"
 
 ------------------------------------------------------------------------------
 -- | The application's routes.
@@ -65,6 +69,7 @@ routes :: [(ByteString, Handler App App ())]
 routes = [ ("/login",    with auth handleLoginSubmit)
          , ("/logout",   with auth handleLogout)
          , ("/new_user", with auth handleNewUser)
+         , ("/new_run", with auth handleNewRun)
          , ("",          serveDirectory "static")
          ]
 
