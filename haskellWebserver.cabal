@@ -33,6 +33,7 @@ Executable haskellWebserver
     snap-loader-static        >= 0.9     && < 0.10,
     text                      >= 0.11    && < 1.2,
     time                      >= 1.1     && < 1.5,
+    transformers,
     xmlhtml                   >= 0.1
 
   if flag(old-base)

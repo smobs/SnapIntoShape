@@ -20,10 +20,12 @@ import           Snap.Snaplet.Heist
 import           Snap.Snaplet.Session.Backends.CookieSession
 import           Snap.Util.FileServe
 import           Heist
+import Control.Monad.IO.Class
+import qualified Text.XmlHtml              as X
 import qualified Heist.Interpreted as I
 ------------------------------------------------------------------------------
 import           Application
-
+import           RaceCountdown
 
 ------------------------------------------------------------------------------
 -- | Render login form
@@ -60,16 +62,29 @@ handleNewUser = method GET handleForm <|> method POST handleFormSubmit
 
 ------------------------------------------------------------------------------
 
-handleNewRun :: Handler App (AuthManager App) ()
-handleNewRun  = method GET $ render "new_run"
+handleCountdown :: Handler App (AuthManager App) ()
+handleCountdown  = method GET $ renderWithSplices "countdown" countdownSplices
 
+countdownSplices :: Splices (SnapletISplice App)
+countdownSplices = do
+  "remainingDays" ## daysTilRaceSplice
+  "remainingRuns" ## remainingRunsSplice
+  "slackDays" ## slackSplice
+   where remainingRunsSplice = ioSplice (return runsRemaining )
+         daysTilRaceSplice = ioSplice daysTilRace
+         slackSplice = ioSplice numberOfSlackDays
+
+ioSplice :: Show a => IO a -> SnapletISplice App
+ioSplice io = do
+  i <- liftIO io
+  return [X.TextNode (T.pack . show $ i)]  
 ------------------------------------------------------------------------------
 -- | The application's routes.
 routes :: [(ByteString, Handler App App ())]
 routes = [ ("/login",    with auth handleLoginSubmit)
          , ("/logout",   with auth handleLogout)
          , ("/new_user", with auth handleNewUser)
-         , ("/new_run", with auth handleNewRun)
+         , ("/countdown",  with auth handleCountdown)
          , ("",          serveDirectory "static")
          ]
 
