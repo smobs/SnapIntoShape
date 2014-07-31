@@ -70,9 +70,10 @@ countdownSplices = do
   "remainingDays" ## daysTilRaceSplice
   "remainingRuns" ## remainingRunsSplice
   "slackDays" ## slackSplice
-   where remainingRunsSplice = ioSplice (return runsRemaining )
+   where currentRun = (4,2)
+         remainingRunsSplice = ioSplice (return $ runsRemaining currentRun)
          daysTilRaceSplice = ioSplice daysTilRace
-         slackSplice = ioSplice numberOfSlackDays
+         slackSplice = ioSplice $ numberOfSlackDays currentRun
 
 ioSplice :: Show a => IO a -> SnapletISplice App
 ioSplice io = do

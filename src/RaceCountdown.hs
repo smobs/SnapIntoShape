@@ -9,15 +9,15 @@ import Data.Time as T
 import Control.Applicative
 
 type Week = Int
-type Run = Int
+type Run = (Week, Int)
 
-percentageDaysRunning :: IO Double
-percentageDaysRunning =  (/) <$>  return ( fromIntegral runsRemaining) <*> fromIntegral <$> daysTilRace 
+percentageDaysRunning :: Run -> IO Double
+percentageDaysRunning run =  (/) <$>  return ( fromIntegral $ runsRemaining run) <*> fromIntegral <$> daysTilRace 
 
-numberOfSlackDays :: IO Integer
-numberOfSlackDays = do
+numberOfSlackDays :: Run -> IO Integer
+numberOfSlackDays run = do
   dl <- daysTilRace
-  let r = toInteger runsRemaining
+  let r = toInteger $ runsRemaining run
   return (dl - (2 * r))
 
 daysTilRace :: IO Integer
@@ -32,14 +32,11 @@ daysUntil x = do
 deadline :: Day
 deadline = fromGregorian 2014 09 14
 
-runsRemaining :: Int
-runsRemaining = runsRemaining' currentRun
-
-runsRemaining' :: (Week, Run) -> Int 
-runsRemaining' (w , r) = numberOfRunsInC25K - (r + 3 * (w - 1))
+runsRemaining :: Run -> Int 
+runsRemaining (w , r) = numberOfRunsInC25K - (r + 3 * (w - 1))
 
 numberOfRunsInC25K :: Int
 numberOfRunsInC25K = 8 * 3
 
-currentRun :: (Week , Run)
+currentRun ::Run
 currentRun = (4 , 2)
