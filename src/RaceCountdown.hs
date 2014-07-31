@@ -42,4 +42,4 @@ numberOfRunsInC25K :: Int
 numberOfRunsInC25K = 8 * 3
 
 currentRun :: (Week , Run)
-currentRun = (3 , 1)
+currentRun = (4 , 2)
