@@ -11,16 +11,19 @@ module Site
 ------------------------------------------------------------------------------
 import           Control.Applicative
 import           Data.ByteString (ByteString)
+import           Data.ByteString.Char8 (readInt)
 import qualified Data.Text as T
+import           Database.MongoDB.Connection
 import           Snap.Core
 import           Snap.Snaplet
 import           Snap.Snaplet.Auth
 import           Snap.Snaplet.Auth.Backends.JsonFile
 import           Snap.Snaplet.Heist
 import           Snap.Snaplet.Session.Backends.CookieSession
+import           Snap.Snaplet.MongoDB
 import           Snap.Util.FileServe
 import           Heist
-import Control.Monad.IO.Class
+import           Control.Monad.IO.Class
 import qualified Text.XmlHtml              as X
 import qualified Heist.Interpreted as I
 ------------------------------------------------------------------------------
@@ -62,15 +65,31 @@ handleNewUser = method GET handleForm <|> method POST handleFormSubmit
 
 ------------------------------------------------------------------------------
 
-handleCountdown :: Handler App (AuthManager App) ()
-handleCountdown  = method GET $ renderWithSplices "countdown" countdownSplices
+handleCountdown :: Handler App App ()
+handleCountdown  = do 
+  run <- unsafeWithDB findCurrentRun
+  method GET (showPage run)  <|> method POST (handleAddRun)
+  where showPage run = renderWithSplices "countdown" $ countdownSplices run
+                  
+handleAddRun :: Handler App App ()             
+handleAddRun = do
+  w <- f <$>  (getPostParam "week")
+  r <- f <$>  (getPostParam "run")
+  let wr = (,) <$> w <*> r 
+  case wr of
+    Nothing -> return ()
+    Just wr' -> unsafeWithDB $ addNewRun wr'
+  redirect "/countdown"
 
-countdownSplices :: Splices (SnapletISplice App)
-countdownSplices = do
+f :: Maybe ByteString -> Maybe Int 
+f b = fst <$> (b >>= readInt)
+
+countdownSplices :: Run -> Splices (SnapletISplice App)
+countdownSplices currentRun  = do
   "remainingDays" ## daysTilRaceSplice
   "remainingRuns" ## remainingRunsSplice
   "slackDays" ## slackSplice
-   where currentRun = (4,2)
+   where
          remainingRunsSplice = ioSplice (return $ runsRemaining currentRun)
          daysTilRaceSplice = ioSplice daysTilRace
          slackSplice = ioSplice $ numberOfSlackDays currentRun
@@ -85,7 +104,7 @@ routes :: [(ByteString, Handler App App ())]
 routes = [ ("/login",    with auth handleLoginSubmit)
          , ("/logout",   with auth handleLogout)
          , ("/new_user", with auth handleNewUser)
-         , ("/countdown",  with auth handleCountdown)
+         , ("/countdown",  handleCountdown)
          , ("",          serveDirectory "static")
          ]
 
@@ -97,7 +116,7 @@ app = makeSnaplet "app" "An snaplet example application." Nothing $ do
     h <- nestSnaplet "" heist $ heistInit "templates"
     s <- nestSnaplet "sess" sess $
            initCookieSessionManager "site_key.txt" "sess" (Just 3600)
-
+    m <- nestSnaplet "mongo" mongo $ mongoDBInit 10 (host "127.0.0.1") "HealthTrackerDB"
     -- NOTE: We're using initJsonFileAuthManager here because it's easy and
     -- doesn't require any kind of database server to run.  In practice,
     -- you'll probably want to change this to a more robust auth backend.
@@ -105,5 +124,5 @@ app = makeSnaplet "app" "An snaplet example application." Nothing $ do
            initJsonFileAuthManager defAuthSettings sess "users.json"
     addRoutes routes
     addAuthSplices h auth
-    return $ App h s a
+    return $ App h s a m
 
